@@ -1,6 +1,10 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import CampoFormulario from '../components/CampoFormulario';
-import { obtenerComunas, validarRegistro, esFormularioValido } from '../utils/validaciones';
+import { useAuth } from '../context/AuthContext';
+import { useApi } from '../hooks/useApi';
+import { getRegiones, getComunas } from '../services/api';
+import { validarRegistro, esFormularioValido } from '../utils/validaciones';
 
 const datosIniciales = {
   nombre: '', correo: '', confirmarCorreo: '',
@@ -13,6 +17,14 @@ export default function Registro() {
   const [datos, setDatos] = useState(datosIniciales);
   const [errores, setErrores] = useState({});
   const [exito, setExito] = useState(false);
+  const [errorServidor, setErrorServidor] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const { registrarse } = useAuth();
+
+  // EP3: regiones y comunas vienen del backend. Las comunas se vuelven a pedir cada vez que cambia
+  // la región (por eso [datos.region] va como dependencia); sin región no se pide nada
+  const regiones = useApi(getRegiones);
+  const comunas = useApi(() => (datos.region ? getComunas(datos.region) : Promise.resolve([])), [datos.region]);
 
   // Un solo handleChange para todos los campos: usa el "name" del input para saber
   // qué propiedad cambiar. Si se cambia la región, la comuna vuelve a quedar vacía
@@ -26,16 +38,32 @@ export default function Registro() {
     }));
   }
 
-  function handleSubmit(e) {
+  // Primero se valida en el navegador (respuesta inmediata) y luego se crea la cuenta en el backend
+  // (POST /api/auth/registro). El backend vuelve a validar todo: nunca se confía solo en el frontend
+  async function handleSubmit(e) {
     e.preventDefault(); // que no recargue la página
     const nuevosErrores = validarRegistro(datos);
     setErrores(nuevosErrores);
+    setExito(false);
+    setErrorServidor('');
+    if (!esFormularioValido(nuevosErrores)) return;
 
-    if (esFormularioValido(nuevosErrores)) {
+    setEnviando(true);
+    try {
+      await registrarse({
+        nombre: datos.nombre,
+        correo: datos.correo,
+        contrasena: datos.contrasena,
+        comunaId: Number(datos.comuna), // el value del select es el id de la comuna
+      });
       setExito(true);
       setDatos(datosIniciales); // limpiamos el formulario
-    } else {
-      setExito(false);
+    } catch (error) {
+      // ej: "Ya existe una cuenta con ese correo" o errores por campo del backend
+      setErrores(error.campos ?? {});
+      setErrorServidor(error.message);
+    } finally {
+      setEnviando(false);
     }
   }
 
@@ -46,7 +74,12 @@ export default function Registro() {
           <div className="card shadow-sm p-4">
             <h1 className="h3 mb-4 text-center">Crear cuenta 👻</h1>
 
-            {exito && <div className="alert alert-success">¡Registro exitoso! Bienvenido al más allá.</div>}
+            {exito && (
+              <div className="alert alert-success">
+                ¡Registro exitoso! Bienvenido al más allá. Ya iniciaste sesión: <Link to="/productos" className="alert-link">ver propiedades</Link>
+              </div>
+            )}
+            {errorServidor && <div className="alert alert-danger">{errorServidor}</div>}
 
             {/* noValidate apaga los avisos propios del navegador, así se ven solo nuestros mensajes */}
             <form onSubmit={handleSubmit} noValidate>
@@ -72,10 +105,11 @@ export default function Registro() {
                   <select id="region" name="region" value={datos.region} onChange={handleChange}
                     className={`form-select ${errores.region ? 'is-invalid' : ''}`}>
                     <option value="">Seleccionar</option>
-                    <option value="metropolitana">Metropolitana</option>
-                    <option value="araucania">Araucanía</option>
-                    <option value="nuble">Ñuble</option>
+                    {(regiones.datos ?? []).map((r) => (
+                      <option key={r.codigo} value={r.codigo}>{r.nombre}</option>
+                    ))}
                   </select>
+                  {regiones.error && <div className="form-text text-danger">{regiones.error.message}</div>}
                   {errores.region && <div className="invalid-feedback">{errores.region}</div>}
                 </div>
 
@@ -89,15 +123,17 @@ export default function Registro() {
                     <option value="">
                       {datos.region ? 'Seleccione' : 'Elija una región'}
                     </option>
-                    {obtenerComunas(datos.region).map((c) => (
-                      <option key={c} value={c.toLowerCase()}>{c}</option>
+                    {(comunas.datos ?? []).map((c) => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
                     ))}
                   </select>
                   {errores.comuna && <div className="invalid-feedback">{errores.comuna}</div>}
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-warning w-100 mt-3">Registrarse</button>
+              <button type="submit" className="btn btn-warning w-100 mt-3" disabled={enviando}>
+                {enviando ? 'Creando cuenta...' : 'Registrarse'}
+              </button>
             </form>
           </div>
         </div>

@@ -1,35 +1,74 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { productos } from '../data/productos';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../context/CarritoContext';
-import { agruparCarrito, formatPrecio } from '../utils/carrito';
+import { useAuth } from '../context/AuthContext';
+import { Cargando, MensajeError } from '../components/EstadoCarga';
+import { useApi } from '../hooks/useApi';
+import { getPropiedades, crearPedido } from '../services/api';
+import { agruparCarrito, calcularTotal, formatPrecio } from '../utils/carrito';
+
+// máximo de unidades por propiedad (la misma regla valida el backend)
+const MAXIMO_POR_PROPIEDAD = 3;
 
 export default function Carrito() {
-  const { carrito, total, agregar, quitar, vaciar } = useCarrito();
-  const [compraConfirmada, setCompraConfirmada] = useState(false);
+  const { carrito, agregar, quitar, vaciar } = useCarrito();
+  const { estaAutenticado } = useAuth();
+  const navegar = useNavigate();
+
+  // los precios y datos de cada propiedad vienen de la API; el carrito solo guarda los ids (slugs)
+  const catalogo = useApi(getPropiedades);
+  const [pedidoConfirmado, setPedidoConfirmado] = useState(null);
+  const [enviando, setEnviando] = useState(false);
+  const [errorCompra, setErrorCompra] = useState(null);
 
   // el carrito guarda ids repetidos; para la lista los juntamos en una fila por propiedad
+  const productos = catalogo.datos ?? [];
   const items = agruparCarrito(carrito, productos);
+  const total = calcularTotal(carrito, productos);
 
-  // no hay backend ni pago real: finalizar solo vacía el carrito y muestra la confirmación
-  function finalizarCompra() {
-    vaciar();
-    setCompraConfirmada(true);
+  // EP3: finalizar compra crea el pedido en el backend (POST /api/pedidos con el token JWT).
+  // Sin sesión se manda al login, y al entrar vuelve al carrito (state.desde)
+  async function finalizarCompra() {
+    if (!estaAutenticado) {
+      navegar('/login', { state: { desde: '/carrito' } });
+      return;
+    }
+    setEnviando(true);
+    setErrorCompra(null);
+    try {
+      const pedido = await crearPedido(carrito);
+      vaciar();
+      setPedidoConfirmado(pedido);
+    } catch (error) {
+      setErrorCompra(error);
+    } finally {
+      setEnviando(false);
+    }
   }
 
-  // La página tiene 3 estados posibles (compra confirmada, vacío y con productos).
+  // La página tiene varios estados posibles (compra confirmada, cargando, vacío y con productos).
   // Con returns tempranos queda más claro que anidando ternarios
 
-  if (compraConfirmada) {
+  if (pedidoConfirmado) {
     return (
       <div className="container py-5 text-center">
         <h1>¡Compra confirmada! 🕯️</h1>
+        <p className="mb-1">Pedido N° <strong>{pedidoConfirmado.id}</strong> por <strong>{formatPrecio(pedidoConfirmado.total)}</strong></p>
         <p className="text-secondary mb-4">
           Un agente se comunicará contigo pronto... probablemente a medianoche.
         </p>
-        <Link to="/productos" className="btn-enlace">Seguir viendo propiedades</Link>
+        <div className="d-flex justify-content-center flex-wrap gap-4">
+          <Link to="/mis-pedidos" className="btn-enlace">Ver mis pedidos</Link>
+          <Link to="/productos" className="btn-enlace secundario">Seguir viendo propiedades</Link>
+        </div>
       </div>
     );
+  }
+
+  if (carrito.length > 0 && catalogo.cargando) return <Cargando texto="Cargando tu carrito..." />;
+
+  if (catalogo.error) {
+    return <div className="container py-5"><MensajeError error={catalogo.error} onReintentar={catalogo.recargar} /></div>;
   }
 
   if (items.length === 0) {
@@ -66,7 +105,8 @@ export default function Carrito() {
               <div className="contador" role="group" aria-label={`Cantidad de ${producto.nombre}`}>
                 <button className="contador__boton" onClick={() => quitar(producto.id)} aria-label="Quitar uno">−</button>
                 <span className="contador__valor" aria-live="polite">{cantidad}</span>
-                <button className="contador__boton" onClick={() => agregar(producto.id)} aria-label="Agregar uno">+</button>
+                <button className="contador__boton" onClick={() => agregar(producto.id)} aria-label="Agregar uno"
+                        disabled={cantidad >= MAXIMO_POR_PROPIEDAD}>+</button>
               </div>
 
               <p className="mb-0 text-end item-carrito__subtotal">{formatPrecio(subtotal)}</p>
@@ -95,9 +135,13 @@ export default function Carrito() {
               <span>Total</span>
               <span className="precio-destacado">{formatPrecio(total)}</span>
             </div>
-            <button className="btn btn-warning w-100" onClick={finalizarCompra}>
-              Finalizar compra
+
+            {errorCompra && <div className="alert alert-danger py-2 small">{errorCompra.message}</div>}
+
+            <button className="btn btn-warning w-100" onClick={finalizarCompra} disabled={enviando}>
+              {enviando ? 'Procesando...' : estaAutenticado ? 'Finalizar compra' : 'Inicia sesión para comprar'}
             </button>
+            <p className="small text-secondary mt-2 mb-0">El total final lo confirma el servidor con los precios vigentes.</p>
           </aside>
         </div>
       </div>

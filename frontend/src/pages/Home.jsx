@@ -1,15 +1,21 @@
 import { Link } from 'react-router-dom';
-import { productos } from '../data/productos';
-import { blogs } from '../data/blogs';
 import TarjetaProducto from '../components/TarjetaProducto';
+import { Cargando, MensajeError } from '../components/EstadoCarga';
+import { useApi } from '../hooks/useApi';
+import { getDestacadas, getBlogs } from '../services/api';
 
-// para cambiar la propiedad del mes basta con poner otro id de productos.js
+// la propiedad del mes es esta si está destacada; si no, la primera destacada que llegue
 const ID_PROPIEDAD_MES = 'castillo-niebla';
 
 export default function Home() {
-  const propiedadMes = productos.find((p) => p.id === ID_PROPIEDAD_MES);
-  // las destacadas son las 3 primeras, sin repetir la del mes
-  const destacados = productos.filter((p) => p.id !== ID_PROPIEDAD_MES).slice(0, 3);
+  // EP3: las destacadas (las que el admin marca como "destacada") y los casos vienen de la API
+  const destacadas = useApi(getDestacadas);
+  const casos = useApi(getBlogs);
+
+  const lista = destacadas.datos ?? [];
+  const propiedadMes = lista.find((p) => p.id === ID_PROPIEDAD_MES) ?? lista[0];
+  // las destacadas del Home son 3, sin repetir la del mes
+  const destacados = lista.filter((p) => p !== propiedadMes).slice(0, 3);
 
   return (
     // <> </> es un Fragment: agrupa las secciones sin meter un div extra
@@ -31,7 +37,11 @@ export default function Home() {
         </div>
       </section>
 
+      {destacadas.cargando && <Cargando />}
+      {destacadas.error && <div className="container"><MensajeError error={destacadas.error} onReintentar={destacadas.recargar} /></div>}
+
       {/* Propiedad del mes: foto a un lado y la "ficha" al otro, en celular quedan una bajo la otra */}
+      {propiedadMes && (
       <section className="propiedad-mes py-5">
         <div className="container py-lg-4">
           <div className="row g-4 g-lg-5 align-items-center">
@@ -55,6 +65,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Destacadas: misma tarjeta del catálogo pero sin onAgregar, así no sale el botón del carrito */}
       <section className="container py-5">
@@ -71,11 +82,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Casos del blog, sacados de data/blogs.js igual que la página Blogs */}
+      {/* Casos del blog, desde la API igual que la página Blogs */}
       <section className="container pb-5">
         <h2 className="mb-4">Casos recientes</h2>
+        {casos.error && <MensajeError error={casos.error} onReintentar={casos.recargar} />}
         <div className="row g-4">
-          {blogs.map((b) => (
+          {(casos.datos ?? []).map((b) => (
             <div className="col-12 col-md-6" key={b.id}>
               <Link to={`/blogs/${b.id}`} className="caso-reciente d-flex gap-3 text-decoration-none h-100">
                 <img src={b.imagen} alt="" />

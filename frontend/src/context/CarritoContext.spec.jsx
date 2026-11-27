@@ -3,13 +3,13 @@ import { CarritoProvider, useCarrito } from './CarritoContext';
 import { renderizar } from '../test-utils/renderizar';
 
 // Un Context no se puede probar solo, necesita un componente que lo use.
-// Este es mínimo y solo existe para la prueba: muestra la cantidad y el total, y tiene botones para cada acción
+// Este es mínimo y solo existe para la prueba: muestra la cantidad y tiene botones para cada acción
 function ConsumidorDePrueba() {
-  const { cantidad, total, agregar, quitar, vaciar } = useCarrito();
+  const { cantidad, carrito, agregar, quitar, vaciar } = useCarrito();
   return (
     <div>
       <span id="cantidad">{cantidad}</span>
-      <span id="total">{total}</span>
+      <span id="ids">{carrito.join(',')}</span>
       <button id="agregar" onClick={() => agregar('faro-ahogado', 2)}>+</button>
       <button id="quitar" onClick={() => quitar('faro-ahogado')}>-</button>
       <button id="vaciar" onClick={vaciar}>x</button>
@@ -58,9 +58,9 @@ describe('CarritoContext', () => {
     vista = montar();
     expect(texto('cantidad')).toBe('0');
 
-    clic('agregar'); // 2 faros de $99.900.000
+    clic('agregar'); // agrega 2 faros
     expect(texto('cantidad')).toBe('2');
-    expect(texto('total')).toBe('199800000');
+    expect(texto('ids')).toBe('faro-ahogado,faro-ahogado');
     expect(setItemFalso).toHaveBeenCalledWith('carrito', '["faro-ahogado","faro-ahogado"]');
 
     clic('quitar');

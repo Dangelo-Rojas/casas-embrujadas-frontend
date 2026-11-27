@@ -1,15 +1,20 @@
 import { Link } from 'react-router-dom';
-import { blogs } from '../data/blogs';
+import { Cargando, MensajeError } from '../components/EstadoCarga';
+import { useApi } from '../hooks/useApi';
+import { getBlogs } from '../services/api';
 
-// Lista de casos curiosos. Los textos están en data/blogs.js, así que agregar un caso
-// nuevo es solo sumar un objeto a ese arreglo
+// Lista de casos curiosos. EP3: vienen del backend (GET /api/blogs), ordenados del más reciente
 export default function Blogs() {
+  const { datos: blogs, cargando, error, recargar } = useApi(getBlogs);
+
   return (
     <div className="container py-5">
       <h1 className="mb-4 text-center">Noticias importantes</h1>
       <div className="row justify-content-center">
         <div className="col-12 col-lg-9">
-          {blogs.map((b) => (
+          {cargando && <Cargando />}
+          {error && <MensajeError error={error} onReintentar={recargar} />}
+          {(blogs ?? []).map((b) => (
             <div className="card mb-4 shadow-sm" key={b.id}>
               {/* en celular la foto queda arriba del texto; desde tablet quedan lado a lado */}
               <div className="row g-0">

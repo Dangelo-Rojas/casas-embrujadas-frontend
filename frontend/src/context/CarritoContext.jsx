@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { agregarAlCarrito, quitarDelCarrito, calcularTotal } from '../utils/carrito';
-import { productos } from '../data/productos';
+import { agregarAlCarrito, quitarDelCarrito } from '../utils/carrito';
 
 // Estado global del carrito. Lo usan el Navbar (contador), Productos, Detalle y Carrito,
 // así que en vez de andar pasando props por todos lados lo dejamos en un Context
@@ -29,12 +28,12 @@ export function CarritoProvider({ children }) {
   }, [carrito]);
 
   // Lo que pueden leer/usar los componentes con useCarrito().
+  // (el total ya no se calcula aquí: los precios vienen de la API y la página Carrito lo calcula con ellos)
   // agregar y quitar usan la forma setCarrito(actual => ...) para trabajar siempre
   // con el valor más reciente, y las funciones de utils/ nunca modifican el arreglo original
   const valor = {
     carrito,
     cantidad: carrito.length,
-    total: calcularTotal(carrito, productos),
     agregar: (id, cantidad) => setCarrito((actual) => agregarAlCarrito(actual, id, cantidad)),
     quitar: (id) => setCarrito((actual) => quitarDelCarrito(actual, id)),
     vaciar: () => setCarrito([]),

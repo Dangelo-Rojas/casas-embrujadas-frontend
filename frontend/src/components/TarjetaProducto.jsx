@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 // Tarjeta de una propiedad. Se usa en el catálogo y en las destacadas del Home.
-// - producto: el objeto con los datos (viene de data/productos.js)
+// - producto: el objeto con los datos (viene de la API, ver services/api.js)
 // - onAgregar: opcional. Si viene, aparece el botón "Añadir al carrito".
 //   La tarjeta no sabe nada del carrito, solo avisa el id al padre
 export default function TarjetaProducto({ producto, onAgregar }) {

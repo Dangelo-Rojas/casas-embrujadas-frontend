@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { productos } from '../data/productos';
 import { useCarrito } from '../context/CarritoContext';
+import { Cargando, MensajeError } from '../components/EstadoCarga';
+import { useApi } from '../hooks/useApi';
+import { getPropiedad } from '../services/api';
 
 export default function Detalle() {
   // el id viene de la URL: /producto/:id (en la EP1 era detalle-producto.html?id=...)
@@ -12,9 +14,17 @@ export default function Detalle() {
   const [imagenActiva, setImagenActiva] = useState(0); // índice de la foto grande
   const [agregado, setAgregado] = useState(false);     // para mostrar el aviso verde
 
-  const producto = productos.find((p) => p.id === id);
+  // EP3: se pide al backend (GET /api/propiedades/slug/{id}); si cambia el id de la URL se vuelve a pedir
+  const { datos: producto, cargando, error, recargar } = useApi(() => getPropiedad(id), [id]);
 
-  // si alguien escribe un id que no existe en la URL mostramos un mensaje en vez de romper la página
+  if (cargando) return <Cargando />;
+
+  // un error que no sea 404 (ej: backend apagado) se muestra con opción de reintentar
+  if (error && error.estado !== 404) {
+    return <div className="container py-4"><MensajeError error={error} onReintentar={recargar} /></div>;
+  }
+
+  // si alguien escribe un id que no existe en la URL (el backend responde 404) mostramos un mensaje
   if (!producto) {
     return (
       <div className="container py-5 text-center">

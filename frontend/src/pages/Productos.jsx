@@ -1,9 +1,13 @@
-import { productos } from '../data/productos';
 import { useCarrito } from '../context/CarritoContext';
 import TarjetaProducto from '../components/TarjetaProducto';
+import { Cargando, MensajeError } from '../components/EstadoCarga';
+import { useApi } from '../hooks/useApi';
+import { getPropiedades } from '../services/api';
 
 export default function Productos() {
   const { agregar } = useCarrito();
+  // EP3: el catálogo ya no está escrito en el código, se pide al backend (GET /api/propiedades)
+  const { datos: productos, cargando, error, recargar } = useApi(getPropiedades);
 
   return (
     <>
@@ -18,9 +22,12 @@ export default function Productos() {
       </section>
 
       <div className="container py-5">
+        {cargando && <Cargando />}
+        {error && <MensajeError error={error} onReintentar={recargar} />}
+
         {/* grilla responsiva: 1 tarjeta por fila en celular, 2 en tablet y 3 en escritorio */}
         <div className="row g-4">
-          {productos.map((p) => (
+          {(productos ?? []).map((p) => (
             <div className="col-12 col-sm-6 col-lg-4" key={p.id}>
               {/* le pasamos agregar del Context, la tarjeta lo llama con el id al hacer clic */}
               <TarjetaProducto producto={p} onAgregar={agregar} />

@@ -13,6 +13,9 @@ import Contacto from './pages/Contacto';
 import Login from './pages/Login';
 import Registro from './pages/Registro';
 import NoEncontrada from './pages/NoEncontrada';
+import MisPedidos from './pages/MisPedidos';
+import Admin from './pages/Admin';
+import RutaProtegida from './components/RutaProtegida';
 
 // Estructura general: navbar arriba, la página que toque al medio y el footer abajo.
 // En la EP1 esto se repetía en cada .html; acá se escribe una sola vez
@@ -37,6 +40,9 @@ export default function App() {
           <Route path="/contacto" element={<Contacto />} />
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
+          {/* rutas protegidas: la primera necesita sesión, la segunda además rol ADMIN */}
+          <Route path="/mis-pedidos" element={<RutaProtegida><MisPedidos /></RutaProtegida>} />
+          <Route path="/admin" element={<RutaProtegida rol="ADMIN"><Admin /></RutaProtegida>} />
           {/* cualquier ruta que no exista cae acá */}
           <Route path="*" element={<NoEncontrada />} />
         </Routes>

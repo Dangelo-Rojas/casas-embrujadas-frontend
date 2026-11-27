@@ -1,10 +1,17 @@
 import { Link, useParams } from 'react-router-dom';
-import { blogs } from '../data/blogs';
+import { Cargando, MensajeError } from '../components/EstadoCarga';
+import { useApi } from '../hooks/useApi';
+import { getBlog } from '../services/api';
 
 // Un solo componente para todos los casos (antes eran blog-detalle-1.html y blog-detalle-2.html)
 export default function BlogDetalle() {
   const { id } = useParams();
-  const blog = blogs.find((b) => b.id === id);
+  const { datos: blog, cargando, error, recargar } = useApi(() => getBlog(id), [id]);
+
+  if (cargando) return <Cargando />;
+  if (error && error.estado !== 404) {
+    return <div className="container py-4"><MensajeError error={error} onReintentar={recargar} /></div>;
+  }
 
   if (!blog) {
     return (

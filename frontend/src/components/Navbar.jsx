@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../context/CarritoContext';
+import { useAuth } from '../context/AuthContext';
 
 // los enlaces del menú en un arreglo, así se agregan o quitan sin tocar el JSX
 const enlaces = [
@@ -14,6 +15,11 @@ const enlaces = [
 export default function Navbar() {
   // el contador del carrito sale del Context, se actualiza solo cuando agregas o quitas algo
   const { cantidad } = useCarrito();
+
+  // EP3: el menú cambia según la sesión: sin sesión muestra Iniciar sesión / Registrarse;
+  // con sesión saluda y muestra Mis pedidos, y si el rol es ADMIN también el Panel admin
+  const { usuario, estaAutenticado, esAdmin, cerrarSesion } = useAuth();
+  const navegar = useNavigate();
 
   // El menú en celular (botón ☰) lo maneja React con este estado.
   // Antes lo abría el JS de Bootstrap, pero como React Router no recarga la página
@@ -74,9 +80,23 @@ export default function Navbar() {
             ))}
           </ul>
 
-          <div className="d-flex flex-wrap gap-2 pb-2 pb-lg-0">
-            <Link className="btn btn-outline-light btn-sm" to="/login" onClick={cerrarMenu}>Iniciar sesión</Link>
-            <Link className="btn btn-outline-light btn-sm" to="/registro" onClick={cerrarMenu}>Registrarse</Link>
+          <div className="d-flex flex-wrap align-items-center gap-2 pb-2 pb-lg-0">
+            {estaAutenticado ? (
+              <>
+                <span className="navbar-text small me-1">Hola, {usuario.nombre.split(' ')[0]}</span>
+                {esAdmin && <Link className="btn btn-outline-warning btn-sm" to="/admin" onClick={cerrarMenu}>Panel admin</Link>}
+                <Link className="btn btn-outline-light btn-sm" to="/mis-pedidos" onClick={cerrarMenu}>Mis pedidos</Link>
+                <button type="button" className="btn btn-outline-light btn-sm"
+                  onClick={() => { cerrarSesion(); cerrarMenu(); navegar('/'); }}>
+                  Cerrar sesión
+                </button>
+              </>
+            ) : (
+              <>
+                <Link className="btn btn-outline-light btn-sm" to="/login" onClick={cerrarMenu}>Iniciar sesión</Link>
+                <Link className="btn btn-outline-light btn-sm" to="/registro" onClick={cerrarMenu}>Registrarse</Link>
+              </>
+            )}
             <Link className="btn btn-warning btn-sm" to="/carrito" onClick={cerrarMenu}>🛒 Carrito ({cantidad})</Link>
           </div>
         </div>
